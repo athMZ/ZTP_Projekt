@@ -9,7 +9,34 @@
 	</PropertyGroup>
 
 	<PropertyGroup>
-		<ServerGarbageCollection>true</ServerGarbageCollection>
+		<!-- Workstation mode vs server mode -->
+		<ServerGarbageCollection>true</ServerGarbageCollection> <!-- Set to true for server mode -->
+
+		<!-- HeapHardLimit and HeapHardLimitPercent -->
+		<GCHeapHardLimit>0x100000000</GCHeapHardLimit> <!-- Value in bytes -->
+		<GCHeapHardLimitPercent>80</GCHeapHardLimitPercent>
+
+		<!-- Per object-heap hard limits and percents -->
+		<GCHeapHardLimitSOH>0x20000000</GCHeapHardLimitSOH> <!-- Example value for Small Object Heap -->
+		<GCHeapHardLimitSOHPercent>50</GCHeapHardLimitSOHPercent> <!-- Example percentage for SOH -->
+		<GCHeapHardLimitLOH>0x40000000</GCHeapHardLimitLOH> <!-- Example value for Large Object Heap -->
+		<GCHeapHardLimitLOHPercent>30</GCHeapHardLimitLOHPercent> <!-- Example percentage for LOH -->
+
+		<!-- HighMemoryPercent -->
+		<GCHighMemoryPercent>90</GCHighMemoryPercent>
+
+		<!-- Large object heap threshold -->
+		<GCLargeObjectHeapThreshold>85000</GCLargeObjectHeapThreshold>
+
+		<!-- Conserve memory -->
+		<GCConserveMemory>1</GCConserveMemory> <!-- 1 to enable, 0 to disable -->
+
+		<!-- LowLatencyMode and SustainedLowLatencyMode -->
+		<GCLatencyMode>LowLatency</GCLatencyMode> <!-- Options: Batch, Interactive, LowLatency -->
+		<GCLatencyMode>SustainedLowLatency</GCLatencyMode> <!-- Options: Batch, Interactive, LowLatency -->
+
+		<!-- Register for GC Notifications -->
+		<GCRegisterForNotifications>true</GCRegisterForNotifications> <!-- Enable GC notifications -->
 	</PropertyGroup>
 
 	<ItemGroup>
