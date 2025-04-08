@@ -8,7 +8,7 @@ Opracował Mikołaj Zuziak
 
 - 📄 [Opracowanie](https://github.com/athMZ/ZTP_Projekt_1/blob/main/ztp-proj1.pdf)  
 - 📊 [Przykładowe pomiary z dotMemory](https://github.com/athMZ/ZTP_Projekt_1/blob/main/samples)  
-- ⚙️ [Ustawienia projektu (.sln)](https://github.com/athMZ/ZTP_Projekt_1/blob/main/ZTP_Projekt_1.sln)  
+- ⚙️ [Ustawienia projektu](https://github.com/athMZ/ZTP_Projekt_1/blob/main/ZTP_Projekt_1%2FZTP_Projekt_1.csproj)  
 - 💻 [Kod źródłowy](https://github.com/athMZ/ZTP_Projekt_1/blob/main/ZTP_Projekt_1/Program.cs)
 
 ## Konfiguracja za pomocą zmiennych środowiskowych
