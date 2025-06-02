@@ -1,96 +1,72 @@
-﻿using System.Buffers;
-using System.Drawing;
+﻿using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+using OpenCL.Net;
 
-namespace ImgProcessorServer;
-
-internal class ImageProcessor
+public static class ImageProcessor
 {
-	private static readonly int[,] LaplaceKernel = new[,]
-	{
-		{ 0, 0, -1, 0, 0 },
-		{ 0, -1, -2, -1, 0 },
-		{ -1, -2, 16, -2, -1 },
-		{ 0, -1, -2, -1, 0 },
-		{ 0, 0, -1, 0, 0 }
-	};
+    public static Bitmap ApplyLaplaceFilter(Bitmap input)
+    {
+        // Convert input bitmap to byte array (32bpp ARGB)
+        int width = input.Width;
+        int height = input.Height;
+        BitmapData inputData = input.LockBits(new Rectangle(0, 0, width, height),
+            ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        int byteSize = inputData.Stride * height;
+        byte[] inputBytes = new byte[byteSize];
+        Marshal.Copy(inputData.Scan0, inputBytes, 0, byteSize);
+        input.UnlockBits(inputData);
 
-	public static Bitmap ApplyLaplaceFilterManaged(Bitmap bitmap)
-	{
-		Bitmap result = new Bitmap(bitmap.Width, bitmap.Height);
-		int width = bitmap.Width;
-		int height = bitmap.Height;
+        // OpenCL setup
+        ErrorCode error;
+        Platform[] platforms = Cl.GetPlatformIDs(out error);
+        Device[] devices = Cl.GetDeviceIDs(platforms[0], DeviceType.Gpu, out error);
+        Context context = Cl.CreateContext(null, 1, devices, null, IntPtr.Zero, out error);
+        CommandQueue queue = Cl.CreateCommandQueue(context, devices[0], (CommandQueueProperties)0, out error);
 
-		// Allocate byte arrays on the heap to store image data
-		// Each pixel needs 3 bytes (R,G,B)
-		var inputPixels = ArrayPool<byte>.Shared.Rent(height * width * 3);
-		var outputPixels = ArrayPool<byte>.Shared.Rent(height * width * 3);
+        string kernelSource = File.ReadAllText("laplace_filter.cl");
 
-		try
-		{
-			// First pass: read all pixels into the byte array
-			for (int y = 0; y < height; y++)
-			{
-				for (int x = 0; x < width; x++)
-				{
-					Color pixel = bitmap.GetPixel(x, y);
-					int index = (y * width + x) * 3;
-					inputPixels[index] = pixel.R;     // R
-					inputPixels[index + 1] = pixel.G; // G
-					inputPixels[index + 2] = pixel.B; // B
-				}
-			}
+        Program program = Cl.CreateProgramWithSource(context, 1, new[] { kernelSource }, null, out error);
+        error = Cl.BuildProgram(program, 1, devices, string.Empty, null, IntPtr.Zero);
 
-			// Second pass: apply the filter
-			for (int y = 2; y < height - 2; y++)
-			{
-				for (int x = 2; x < width - 2; x++)
-				{
-					int r = 0, g = 0, b = 0;
+        Kernel kernel = Cl.CreateKernel(program, "laplace_filter", out error);
 
-					for (int ky = -2; ky <= 2; ky++)
-					{
-						for (int kx = -2; kx <= 2; kx++)
-						{
-							int pixelIndex = ((y + ky) * width + (x + kx)) * 3;
-							int kernelValue = LaplaceKernel[ky + 2, kx + 2];
+		// Buffers
+        IMem inputBuffer = Cl.CreateBuffer(context, MemFlags.ReadOnly | MemFlags.CopyHostPtr, (IntPtr)byteSize, inputBytes, out error);
+        IMem outputBuffer = Cl.CreateBuffer(context, MemFlags.WriteOnly, (IntPtr)byteSize, out error);
 
-							r += inputPixels[pixelIndex] * kernelValue;     // R
-							g += inputPixels[pixelIndex + 1] * kernelValue; // G
-							b += inputPixels[pixelIndex + 2] * kernelValue; // B
-						}
-					}
+        // Set kernel args
+        Cl.SetKernelArg(kernel, 0, inputBuffer);
+        Cl.SetKernelArg(kernel, 1, outputBuffer);
+        Cl.SetKernelArg(kernel, 2, width);
+        Cl.SetKernelArg(kernel, 3, height);
+        Cl.SetKernelArg(kernel, 4, inputData.Stride);
 
-					r = Math.Clamp(r, 0, 255);
-					g = Math.Clamp(g, 0, 255);
-					b = Math.Clamp(b, 0, 255);
+		// Execute kernel
+        Event clevent;
+        IntPtr[] globalWorkSize = new IntPtr[] { (IntPtr)width, (IntPtr)height };
+        error = Cl.EnqueueNDRangeKernel(queue, kernel, 2, null, globalWorkSize, null, 0, null, out clevent);
+        Cl.Finish(queue);
 
-					int outIndex = (y * width + x) * 3;
-					outputPixels[outIndex] = (byte)r;     // R
-					outputPixels[outIndex + 1] = (byte)g; // G
-					outputPixels[outIndex + 2] = (byte)b; // B
-				}
-			}
+        // Read result
+        byte[] outputBytes = new byte[byteSize];
+        Cl.EnqueueReadBuffer(queue, outputBuffer, Bool.True, IntPtr.Zero, (IntPtr)byteSize, outputBytes, 0, null, out _);
 
-			// Third pass: write processed pixels to the result bitmap
-			for (int y = 2; y < height - 2; y++)
-			{
-				for (int x = 2; x < width - 2; x++)
-				{
-					int index = (y * width + x) * 3;
-					result.SetPixel(x, y, Color.FromArgb(
-						outputPixels[index],      // R
-						outputPixels[index + 1],  // G
-						outputPixels[index + 2]   // B
-					));
-				}
-			}
+        // Convert back to bitmap
+        Bitmap output = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+        BitmapData outputData = output.LockBits(new Rectangle(0, 0, width, height),
+            ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+        Marshal.Copy(outputBytes, 0, outputData.Scan0, byteSize);
+        output.UnlockBits(outputData);
 
-			return result;
-		}
-		finally
-		{
-			ArrayPool<byte>.Shared.Return(inputPixels);
-		}
-	}
+        // Cleanup
+        Cl.ReleaseKernel(kernel);
+        Cl.ReleaseProgram(program);
+        Cl.ReleaseMemObject(inputBuffer);
+        Cl.ReleaseMemObject(outputBuffer);
+        Cl.ReleaseCommandQueue(queue);
+        Cl.ReleaseContext(context);
 
+        return output;
+    }
 }
