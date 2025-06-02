@@ -2,23 +2,31 @@
 using Minio;
 using Minio.DataModel.Args;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 
 namespace ImgProcessorClient;
 
-internal class Program
+public class ImageProcessingClient
 {
-	static async Task Main(string[] args)
+	public static async Task UploadImageAndSendTask(string imagePath)
 	{
-		Console.WriteLine("Client starting...");
+		try
+		{
+			var minioStoredImageReference = await UploadImage(imagePath);
+			await SendTask(minioStoredImageReference);
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine($"Error processing image: {e.Message}");
+		}
+	}
 
-		// MinIO configuration
+	public static async Task<string> UploadImage(string imagePath)
+	{
 		var minioClient = new MinioClient()
 			.WithEndpoint("localhost:9000")
 			.WithCredentials("admin", "admin123")
 			.Build();
 
-		// Ensure the bucket exists
 		const string bucketName = "tmp-images";
 		bool bucketExists = await minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName));
 		if (!bucketExists)
@@ -26,43 +34,66 @@ internal class Program
 			await minioClient.MakeBucketAsync(new MakeBucketArgs().WithBucket(bucketName));
 		}
 
-		// Create a connection to the RabbitMQ server
+		var objectName = Path.GetFileName(imagePath);
+		objectName = $"{Guid.NewGuid()}-{objectName}";
+
+		await minioClient.PutObjectAsync(new PutObjectArgs()
+			.WithBucket(bucketName)
+			.WithObject(objectName)
+			.WithFileName(imagePath));
+
+		Console.WriteLine($"Uploaded {objectName} to bucket {bucketName}.");
+
+		return $"{bucketName}/{objectName}";
+	}
+
+	public static async Task SendTask(string imageReference)
+	{
+		const string queue = "image-queue";
+
 		var factory = new ConnectionFactory
 		{
 			HostName = "localhost",
 			UserName = "admin",
 			Password = "admin",
 		};
-		using var connection = await factory.CreateConnectionAsync();
-		using var channel = await connection.CreateChannelAsync();
 
-		// Declare a queue to send messages to
-		await channel.QueueDeclareAsync(queue: "image-queue", durable: false, exclusive: false, autoDelete: false,
-			arguments: null);
+		var connection = await factory.CreateConnectionAsync();
+		var channel = await connection.CreateChannelAsync();
 
-		// Upload an image and send a message
+		await channel.QueueDeclareAsync(queue, durable: false, exclusive: false, autoDelete: false, arguments: null);
+
+		var messageBody = Encoding.UTF8.GetBytes(imageReference);
+		var props = new BasicProperties
+		{
+			ContentType = "text/plain"
+		};
+
+		await channel.BasicPublishAsync(exchange: "", routingKey: queue, false, props, messageBody);
+
+		Console.WriteLine($" [x] Sent reference to {imageReference}");
+		await channel.CloseAsync();
+		await connection.CloseAsync();
+	}
+}
+
+//D:\ZTP-Imgs\in\a7.jpg
+
+internal class Program
+{
+	static async Task Main()
+	{
+		Console.WriteLine("Client starting...");
+
 		Console.WriteLine("Enter the path to the image file to upload:");
 		var filePath = Console.ReadLine();
+
 		if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
 		{
 			Console.WriteLine("Invalid file path.");
 			return;
 		}
 
-		var objectName = Path.GetFileName(filePath);
-		await minioClient.PutObjectAsync(new PutObjectArgs()
-			.WithBucket(bucketName)
-			.WithObject(objectName)
-			.WithFileName(filePath));
-
-		Console.WriteLine($"Uploaded {objectName} to bucket {bucketName}.");
-
-		// Send a message with the image reference
-		var message = $"{bucketName}/{objectName}";
-		var body = Encoding.UTF8.GetBytes(message);
-
-		await channel.BasicPublishAsync(exchange: string.Empty, routingKey: "image-queue", body: body);
-		Console.WriteLine($" [x] Sent reference to {message}");
-
+		await ImageProcessingClient.UploadImageAndSendTask(filePath);
 	}
 }
