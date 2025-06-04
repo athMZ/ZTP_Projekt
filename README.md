@@ -31,6 +31,8 @@ SUSTAINED_LOW_LATENCY=true
 
 # Projekt 2 - System Rozproszonego Przetwarzania Obrazów
 
+Celem drugiej części projektu było zaprojektowanie i implementacja systemu rozproszonego, w którym klient i serwer komunikują się za pomocą wybranej technologii rozproszonej, natomiast operacje obliczeniowe realizowane są z wykorzystaniem układów GPU.
+
 Opracował Mikołaj Zuziak
 
 - 📄 [Opracowanie](https://github.com/athMZ/ZTP_Projekt/blob/main/sprawozdanie-projekt2.md)   
