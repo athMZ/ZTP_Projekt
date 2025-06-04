@@ -1,4 +1,8 @@
 # Sprawozdanie z Laboratorium: System Rozproszonego Przetwarzania Obrazów z Wykorzystaniem GPU, RabbitMQ oraz Architektury Klient-Serwer
+## Przedmiot: Zaawansowane Techniki Programowania
+### Opracował: Mikołaj Zuziak, IDM, sem. 1, gr. 1b
+
+---
 
 ## 1. Wstęp i założenia projektowe
 
@@ -315,9 +319,9 @@ __kernel void laplace_filter(__global uchar* input, __global uchar* output, int 
 
 Po zakończeniu przetwarzania obraz wynikowy zostaje umieszczony w systemie MinIO, a następnie generowany jest do niego skrócony link (za pomocą usługi Shlink). Klient, wykorzystując ten link, umożliwia użytkownikowi pobranie i wyświetlenie przetworzonego obrazu.
 
-![Podgląd konsoli Klient i Serwer - przykład przetwarzania obrazu](path/to/image.jpg "Przykład przetwarzania obrazu")
+![Podgląd konsoli Klient i Serwer - przykład przetwarzania obrazu]([path/to/image.jpg](https://github.com/athMZ/ZTP_Projekt/blob/main/imgs/processingSingleImg.png) "Przykład przetwarzania obrazu")
 
-![Przykładowy obraz przetworzony przez OpenCL](path/to/image.jpg "Przykładowy obraz przetworzony przez OpenCL")
+![Przykładowy obraz przetworzony przez OpenCL](https://github.com/athMZ/ZTP_Projekt/blob/main/imgs/imageOutputSample.png "Przykładowy obraz przetworzony przez OpenCL")
 
 ---
 
