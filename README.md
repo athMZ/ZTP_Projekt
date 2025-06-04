@@ -33,6 +33,6 @@ SUSTAINED_LOW_LATENCY=true
 
 Opracował Mikołaj Zuziak
 
-- 📄 [Opracowanie]()   
-- 💻 [Kod źródłowy - Serwer]()
-- 💻 [Kod źródłowy - Klient]()
+- 📄 [Opracowanie](https://github.com/athMZ/ZTP_Projekt/blob/main/sprawozdanie-projekt2.md)   
+- 💻 [Kod źródłowy - Serwer](https://github.com/athMZ/ZTP_Projekt/tree/main/ImgProcessorServer)
+- 💻 [Kod źródłowy - Klient](https://github.com/athMZ/ZTP_Projekt/tree/main/ImgProcessorClient)
